@@ -2,6 +2,9 @@
 import streamlit as st
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize session state for chat history if it doesn't exist
 if "messages" not in st.session_state:
@@ -102,6 +105,9 @@ if send_button and user_input.strip():
     # Get AI response
     with st.spinner("Thinking..."):
         try:
+            model_ip = "localhost"  # Replace with your model server IP if needed
+            model_port = 8000  # Replace with your model server port if needed
+            host_url = f"http://{model_ip}:{model_port}"  # Replace with your backend URL if needed
             response = requests.post(
                 "http://localhost:8000/planning",
                 json={"text": user_input}

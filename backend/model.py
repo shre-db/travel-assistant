@@ -12,7 +12,7 @@ model = AutoModelForCausalLM.from_pretrained(
     model_name,
     trust_remote_code=True,
     device_map="auto",
-    torch_dtype=torch.float32,
+    torch_dtype=torch.float16,
 ).eval()
 
 pipe = pipeline(
@@ -20,7 +20,7 @@ pipe = pipeline(
     model=model,
     tokenizer=tokenizer,
     temperature=0.7,
-    max_new_tokens=100,
+    max_new_tokens=512,
     top_p=0.95,
     top_k=20,
     repetition_penalty=1.2,
