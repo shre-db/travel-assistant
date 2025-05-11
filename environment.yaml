@@ -1,0 +1,31 @@
+name: shopping-gpt
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - jupyterlab
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - fastapi
+  - uvicorn
+  - streamlit
+  - scrapy
+  - playwright
+  - faiss-cpu
+  - sentence-transformers
+  - langchain
+  - black
+  - pre-commit
+  - pip:
+      - transformers
+      - accelerate
+      - bitsandbytes
+      - peft
+      - huggingface-hub
+      - weaviate-client
+      - openai
+      - python-dotenv
