@@ -1,11 +1,26 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from langchain.llms import HuggingFacePipeline
+from langchain_community.llms import HuggingFacePipeline
 from langchain.chains import LLMChain
 import torch
 from transformers import pipeline
-from prompt import travel_assistant_prompt
+from huggingface_hub import login
+from dotenv import load_dotenv
+load_dotenv()
+import os 
 
-model_name = "Qwen/Qwen3-0.6B"
+# Load environment variables from .env file
+
+token = os.getenv("HF_TOKEN")
+# Login to Hugging Face Hub
+login(token=token)
+
+model_name = "mistralai/Mistral-7B-Instruct-v0.3"
+# model_name = "Qwen/Qwen3-0.6B"
+
+if "mistralai" in model_name:
+    from mistral_prompt import travel_assistant_prompt
+else:
+    from prompt import travel_assistant_prompt
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
