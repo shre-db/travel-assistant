@@ -18,9 +18,9 @@ model_name = "mistralai/Mistral-7B-Instruct-v0.3"
 # model_name = "Qwen/Qwen3-0.6B"
 
 if "mistralai" in model_name:
-    from mistral_prompt import travel_assistant_prompt
+    from backend.prompts.mistral_prompt import travel_assistant_prompt
 else:
-    from prompt import travel_assistant_prompt
+    from backend.prompts.prompt import travel_assistant_prompt
 
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
