@@ -1,3 +1,5 @@
+from langchain.prompts import PromptTemplate
+
 react_travel_assistant_prompt = """You are TravelGPT, an expert travel assistant. Your job is to help users plan trips, answer travel-related questions, and provide recommendations. You have access to tools for weather, hotels, flights, and visa requirements. Always be friendly, concise, and helpful.
 
 Instructions:
@@ -25,3 +27,10 @@ Action Input: Paris, 2024-06-10
 User: {input}
 {agent_scratchpad}
 """
+
+react_prompt_template = PromptTemplate(
+    input_variables=["input", "chat_history", "agent_scratchpad"],
+    template=react_travel_assistant_prompt,
+)
+
+# Export both the string and the PromptTemplate for flexibility

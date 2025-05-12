@@ -9,7 +9,7 @@ import os
 from langchain.tools import Tool
 from langchain.agents import initialize_agent, AgentType
 from langchain.memory import ConversationBufferMemory
-from . import tools as travel_tools
+import tools as travel_tools
 
 load_dotenv()
 
@@ -22,12 +22,12 @@ if hf_token:
 MODEL_NAME = os.getenv("MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
 
 if "mistralai" in MODEL_NAME:
-    from .prompts.mistral_prompt import travel_assistant_prompt
+    from prompts.mistral_prompt import travel_assistant_prompt
 else:
-    from .prompts.prompt import travel_assistant_prompt
+    from prompts.prompt import travel_assistant_prompt
 
 # Import the custom ReAct prompt for the agent
-from .prompts.react_prompt import react_travel_assistant_prompt
+from prompts.react_prompt import react_prompt_template
 
 class TravelAgent:
     def __init__(self, model_name=MODEL_NAME):
@@ -76,7 +76,7 @@ class TravelAgent:
         ]
 
         # Initialize memory for conversation context
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
 
         # Initialize the ReAct agent with memory and custom prompt
         self.agent = initialize_agent(
@@ -85,7 +85,8 @@ class TravelAgent:
             agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
             verbose=True,
             memory=self.memory,
-            prompt=react_travel_assistant_prompt
+            prompt=react_prompt_template,
+            handle_parsing_errors=True
         )
 
     def plan_trip(self, user_input: str) -> str:
@@ -100,5 +101,12 @@ class TravelAgent:
         """
         Process user input using the agent, allowing tool usage and reasoning.
         """
-        response = self.agent.run(user_input)
-        return response.strip()
+        try:
+            response = self.agent.invoke({"input": user_input})
+            print("Agent response:", response)
+            if isinstance(response, dict) and "output" in response:
+                return response["output"].strip()
+            return str(response).strip()
+        except Exception as e:
+            print("Agent error:", e)
+            return f"Agent error: {e}"

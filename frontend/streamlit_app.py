@@ -114,15 +114,24 @@ if send_button and user_input.strip():
             )
             if response.status_code == 200:
                 response_data = response.json()
-                # Extract only the assistant's response, removing any instructions or user input
+                # Try to extract the assistant's response robustly
                 assistant_response = response_data.get("response", "").strip()
-                if not assistant_response:  # fallback to "Assistant" key if "response" is not found
+                if not assistant_response:
                     assistant_response = response_data.get("Assistant", "").strip()
-                
-                # Add assistant response to chat history
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": assistant_response}
-                )
+                # Clean up Mistral's special tokens if they appear in the response
+                for token in ["<s>", "</s>", "[INST]", "[/INST]"]:
+                    assistant_response = assistant_response.replace(token, "")
+                # Remove any remaining instruction text if it appears
+                if "INSTRUCTIONS:" in assistant_response:
+                    assistant_response = assistant_response.split("INSTRUCTIONS:")[0]
+                # Clean up any extra whitespace
+                assistant_response = " ".join(assistant_response.split())
+                if assistant_response:
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": assistant_response}
+                    )
+                else:
+                    st.error("❌ Received empty response from the model.")
             else:
                 st.error("❌ Server error occurred.")
         except requests.exceptions.RequestException as e:
