@@ -1,112 +1,32 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from langchain_community.llms import HuggingFacePipeline
-from langchain.chains import LLMChain
-import torch
-from transformers import pipeline
-from huggingface_hub import login
-from dotenv import load_dotenv
-import os
-from langchain.tools import Tool
-from langchain.agents import initialize_agent, AgentType
 from langchain.memory import ConversationBufferMemory
-import tools as travel_tools
+from langchain.agents import AgentExecutor
+from langchain.agents.format_scratchpad import format_log_to_str
+from prompts.mistral_prompt import prompt
+from model import chat_model
+from langchain.agents.output_parsers.react_single_input import ReActSingleInputOutputParser
+from tools import tools
 
-load_dotenv()
+memory = ConversationBufferMemory(memory_key="chat_history")
 
-# Load HuggingFace token and login
-hf_token = os.getenv("HF_TOKEN")
-if hf_token:
-    login(token=hf_token)
+# Modify the agent creation to include chat_history
+agent = (   
+    {
+        "input": lambda x: x["input"],
+        "chat_history": lambda x: x["chat_history"],
+        "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
+    }
+    | prompt
+    | chat_model
+    | ReActSingleInputOutputParser()
+)
 
-# Use Mistral model by default
-MODEL_NAME = os.getenv("MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
-
-if "mistralai" in MODEL_NAME:
-    from prompts.mistral_prompt import travel_assistant_prompt
-else:
-    from prompts.prompt import travel_assistant_prompt
-
-# Import the custom ReAct prompt for the agent
-from prompts.react_prompt import react_prompt_template
-
-class TravelAgent:
-    def __init__(self, model_name=MODEL_NAME):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            device_map="auto",
-            torch_dtype=torch.float16,
-        ).eval()
-        self.pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            temperature=0.7,
-            max_new_tokens=512,
-            top_p=0.95,
-            top_k=20,
-            repetition_penalty=1.2,
-        )
-        self.llm = HuggingFacePipeline(pipeline=self.pipe)
-        self.chain = LLMChain(llm=self.llm, prompt=travel_assistant_prompt)
-
-        # Define tools for the agent
-        self.tools = [
-            Tool(
-                name="Get Weather",
-                func=travel_tools.get_weather,
-                description="Get the weather forecast for a location and date. Args: location, date (YYYY-MM-DD)."
-            ),
-            Tool(
-                name="Search Hotels",
-                func=travel_tools.search_hotels,
-                description="Search for hotels in a location for given dates and guests. Args: location, checkin (YYYY-MM-DD), checkout (YYYY-MM-DD), guests."
-            ),
-            Tool(
-                name="Get Flights",
-                func=travel_tools.get_flights,
-                description="Search for flights between two locations on given dates. Args: origin, destination, depart_date (YYYY-MM-DD), return_date (optional, YYYY-MM-DD)."
-            ),
-            Tool(
-                name="Get Visa Requirements",
-                func=travel_tools.get_visa_requirements,
-                description="Get visa requirements for a nationality visiting a destination. Args: nationality, destination."
-            ),
-        ]
-
-        # Initialize memory for conversation context
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
-
-        # Initialize the ReAct agent with memory and custom prompt
-        self.agent = initialize_agent(
-            tools=self.tools,
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=True,
-            memory=self.memory,
-            prompt=react_prompt_template,
-            handle_parsing_errors=True
-        )
-
-    def plan_trip(self, user_input: str) -> str:
-        result = self.chain.run(incoming_text=user_input)
-        # Clean up Mistral's special tokens if present
-        result = result.replace("<s>", "").replace("</s>", "")
-        if "[/INST]" in result:
-            result = result.split("[/INST]", 1)[-1]
-        return result.strip()
-
-    def chat(self, user_input: str) -> str:
-        """
-        Process user input using the agent, allowing tool usage and reasoning.
-        """
-        try:
-            response = self.agent.invoke({"input": user_input})
-            print("Agent response:", response)
-            if isinstance(response, dict) and "output" in response:
-                return response["output"].strip()
-            return str(response).strip()
-        except Exception as e:
-            print("Agent error:", e)
-            return f"Agent error: {e}"
+# Create agent executor with enhanced error handling
+agent_executor = AgentExecutor(
+    agent=agent,
+    tools=tools,
+    verbose=True,
+    handle_parsing_errors=True,
+    memory=memory,
+    max_iterations=10,
+    return_intermediate_steps=True
+)

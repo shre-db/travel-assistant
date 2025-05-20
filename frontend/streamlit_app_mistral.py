@@ -11,7 +11,7 @@ load_dotenv()
 MODEL_NAME = os.getenv("MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
 MODEL_DEVICE = os.getenv("MODEL_DEVICE", "auto")
 MODEL_IP = os.getenv("MODEL_IP", "localhost")
-MODEL_PORT = os.getenv("MODEL_PORT", "8000")
+MODEL_PORT = os.getenv("MODEL_PORT", "5000")
 
 # Initialize session state for chat history if it doesn't exist
 if "messages" not in st.session_state:
@@ -66,8 +66,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.title("✈️ AI Assistant")
-st.markdown("Your personal AI guide for travel planning and recommendations")
+# st.title("AI Assistant")
+# st.markdown("Your personal AI guide for travel planning and recommendations")
 
 # Create a container for chat messages with some bottom padding
 chat_container = st.container()
@@ -113,29 +113,34 @@ if send_button and user_input.strip():
     with st.spinner("Thinking..."):
         try:
             response = requests.post(
-                "http://localhost:8000/planning",
+                "http://localhost:5000/planning",
                 json={"text": user_input}
             )
             if response.status_code == 200:
                 response_data = response.json()
-                assistant_response = response_data.get("response", "").strip()
-                
-                # Clean up Mistral's special tokens if they appear in the response
-                assistant_response = assistant_response.replace("<s>", "")
-                assistant_response = assistant_response.replace("</s>", "")
-                assistant_response = assistant_response.replace("[INST]", "")
-                assistant_response = assistant_response.replace("[/INST]", "")
-                
-                # Remove any remaining instruction text if it appears
-                if "INSTRUCTIONS:" in assistant_response:
-                    assistant_response = assistant_response.split("INSTRUCTIONS:")[0]
-                
-                # Clean up any extra whitespace
-                assistant_response = " ".join(assistant_response.split())
-                
-                if assistant_response:
+                assistant_response = response_data.get("response", "")
+                print(f"Assistant's Response: {assistant_response}")
+                if assistant_response == "Memory cleared":
                     st.session_state.messages.append(
                         {"role": "assistant", "content": assistant_response}
+                    )
+                
+                # Clean up Mistral's special tokens if they appear in the response
+                # assistant_response = assistant_response.replace("<s>", "")
+                # assistant_response = assistant_response.replace("</s>", "")
+                # assistant_response = assistant_response.replace("[INST]", "")
+                # assistant_response = assistant_response.replace("[/INST]", "")
+                
+                # # Remove any remaining instruction text if it appears
+                # if "INSTRUCTIONS:" in assistant_response:
+                #     assistant_response = assistant_response.split("INSTRUCTIONS:")[0]
+                
+                # # Clean up any extra whitespace
+                # assistant_response = " ".join(assistant_response.split())
+                
+                elif assistant_response:
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": assistant_response['output']}
                     )
                 else:
                     st.error("❌ Received empty response from the model.")
