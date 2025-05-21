@@ -14,7 +14,7 @@ print(f"Using: {MODEL_NAME}")
 llm = HuggingFaceEndpoint(
     repo_id=MODEL_NAME,
     temperature=0.1,
-    stop_sequences=["\nObservation:", "Observation", "</s>"]
+    stop_sequences=["\nObservation:", "Observation:", "</s>"]
 )
 
 # Create chat model wrapper
